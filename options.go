@@ -16,7 +16,7 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/mbland/hmacauth"
-	"github.com/pusher/oauth2_proxy/providers"
+	"github.com/timothy-spencer/oauth2_proxy-1/providers"
 )
 
 // Options holds Configuration Options that can be set by Command Line Flag,

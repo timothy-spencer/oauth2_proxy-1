@@ -7,7 +7,7 @@ to validate accounts by email, domain or group.
 Versions v3.0.0 and up are from this fork and will have diverged from any changes in the original fork.
 A list of changes can be seen in the [CHANGELOG](CHANGELOG.md).
 
-[![Build Status](https://secure.travis-ci.org/pusher/oauth2_proxy.svg?branch=master)](http://travis-ci.org/pusher/oauth2_proxy)
+[![Build Status](https://secure.travis-ci.org/timothy-spencer/oauth2_proxy-1.svg?branch=master)](http://travis-ci.org/timothy-spencer/oauth2_proxy-1)
 
 ![Sign In Page](https://cloud.githubusercontent.com/assets/45028/4970624/7feb7dd8-6886-11e4-93e0-c9904af44ea8.png)
 
@@ -19,11 +19,11 @@ A list of changes can be seen in the [CHANGELOG](CHANGELOG.md).
 
 1.  Choose how to deploy:
 
-    a. Download [Prebuilt Binary](https://github.com/pusher/oauth2_proxy/releases) (current release is `v3.1.0`)
+    a. Download [Prebuilt Binary](https://github.com/timothy-spencer/oauth2_proxy-1/releases) (current release is `v3.1.0`)
 
-    b. Build with `$ go get github.com/pusher/oauth2_proxy` which will put the binary in `$GOROOT/bin`
+    b. Build with `$ go get github.com/timothy-spencer/oauth2_proxy-1` which will put the binary in `$GOROOT/bin`
 
-    c. Using the prebuilt docker image [quay.io/pusher/oauth2_proxy](https://quay.io/pusher/oauth2_proxy) (AMD64, ARMv6 and ARM64 tags available)
+    c. Using the prebuilt docker image [quay.io/timothy-spencer/oauth2_proxy-1](https://quay.io/timothy-spencer/oauth2_proxy-1) (AMD64, ARMv6 and ARM64 tags available)
 
 Prebuilt binaries can be validated by extracting the file and verifying it against the `sha256sum.txt` checksum file provided for each release starting with version `v3.0.0`.
 

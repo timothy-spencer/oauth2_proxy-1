@@ -43,35 +43,35 @@ dep:
 build: clean $(BINARY)
 
 $(BINARY):
-	CGO_ENABLED=0 $(GO) build -a -installsuffix cgo -ldflags="-X main.VERSION=${VERSION}" -o $@ github.com/pusher/oauth2_proxy
+	CGO_ENABLED=0 $(GO) build -a -installsuffix cgo -ldflags="-X main.VERSION=${VERSION}" -o $@ github.com/timothy-spencer/oauth2_proxy-1
 
 .PHONY: docker
 docker:
-	docker build -f Dockerfile -t quay.io/pusher/oauth2_proxy:latest .
+	docker build -f Dockerfile -t quay.io/timothy-spencer/oauth2_proxy-1:latest .
 
 .PHONY: docker-all
 docker-all: docker
-	docker build -f Dockerfile -t quay.io/pusher/oauth2_proxy:latest-amd64 .
-	docker build -f Dockerfile -t quay.io/pusher/oauth2_proxy:${VERSION} .
-	docker build -f Dockerfile -t quay.io/pusher/oauth2_proxy:${VERSION}-amd64 .
-	docker build -f Dockerfile.arm64 -t quay.io/pusher/oauth2_proxy:latest-arm64 .
-	docker build -f Dockerfile.arm64 -t quay.io/pusher/oauth2_proxy:${VERSION}-arm64 .
-	docker build -f Dockerfile.armv6 -t quay.io/pusher/oauth2_proxy:latest-armv6 .
-	docker build -f Dockerfile.armv6 -t quay.io/pusher/oauth2_proxy:${VERSION}-armv6 .
+	docker build -f Dockerfile -t quay.io/timothy-spencer/oauth2_proxy-1:latest-amd64 .
+	docker build -f Dockerfile -t quay.io/timothy-spencer/oauth2_proxy-1:${VERSION} .
+	docker build -f Dockerfile -t quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-amd64 .
+	docker build -f Dockerfile.arm64 -t quay.io/timothy-spencer/oauth2_proxy-1:latest-arm64 .
+	docker build -f Dockerfile.arm64 -t quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-arm64 .
+	docker build -f Dockerfile.armv6 -t quay.io/timothy-spencer/oauth2_proxy-1:latest-armv6 .
+	docker build -f Dockerfile.armv6 -t quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-armv6 .
 
 .PHONY: docker-push
 docker-push:
-	docker push quay.io/pusher/oauth2_proxy:latest
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:latest
 
 .PHONY: docker-push-all
 docker-push-all: docker-push
-	docker push quay.io/pusher/oauth2_proxy:latest-amd64
-	docker push quay.io/pusher/oauth2_proxy:${VERSION}
-	docker push quay.io/pusher/oauth2_proxy:${VERSION}-amd64
-	docker push quay.io/pusher/oauth2_proxy:latest-arm64
-	docker push quay.io/pusher/oauth2_proxy:${VERSION}-arm64
-	docker push quay.io/pusher/oauth2_proxy:latest-armv6
-	docker push quay.io/pusher/oauth2_proxy:${VERSION}-armv6
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:latest-amd64
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-amd64
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:latest-arm64
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-arm64
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:latest-armv6
+	docker push quay.io/timothy-spencer/oauth2_proxy-1:${VERSION}-armv6
 
 .PHONY: test
 test: dep lint
@@ -80,11 +80,11 @@ test: dep lint
 .PHONY: release
 release: lint test
 	mkdir release
-	GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-darwin-amd64 github.com/pusher/oauth2_proxy
-	GOOS=linux GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-amd64 github.com/pusher/oauth2_proxy
-	GOOS=linux GOARCH=arm64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-arm64 github.com/pusher/oauth2_proxy
-	GOOS=linux GOARCH=arm GOARM=6 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-armv6 github.com/pusher/oauth2_proxy
-	GOOS=windows GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-windows-amd64 github.com/pusher/oauth2_proxy
+	GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-darwin-amd64 github.com/timothy-spencer/oauth2_proxy-1
+	GOOS=linux GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-amd64 github.com/timothy-spencer/oauth2_proxy-1
+	GOOS=linux GOARCH=arm64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-arm64 github.com/timothy-spencer/oauth2_proxy-1
+	GOOS=linux GOARCH=arm GOARM=6 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-linux-armv6 github.com/timothy-spencer/oauth2_proxy-1
+	GOOS=windows GOARCH=amd64 go build -ldflags="-X main.VERSION=${VERSION}" -o release/$(BINARY)-windows-amd64 github.com/timothy-spencer/oauth2_proxy-1
 	shasum -a 256 release/$(BINARY)-darwin-amd64 > release/$(BINARY)-darwin-amd64-sha256sum.txt
 	shasum -a 256 release/$(BINARY)-linux-amd64 > release/$(BINARY)-linux-amd64-sha256sum.txt
 	shasum -a 256 release/$(BINARY)-linux-arm64 > release/$(BINARY)-linux-arm64-sha256sum.txt
