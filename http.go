@@ -24,6 +24,23 @@ func (s *Server) ListenAndServe() {
 	}
 }
 
+// healthcheck handles healthcheck queries
+func healthcheck(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() == "/liveness_check" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+		if r.URL.EscapedPath() == "/readiness_check" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // ServeHTTP constructs a net.Listener and starts handling HTTP requests
 func (s *Server) ServeHTTP() {
 	HTTPAddress := s.Opts.HTTPAddress
@@ -51,7 +68,7 @@ func (s *Server) ServeHTTP() {
 	}
 	log.Printf("HTTP: listening on %s", listenAddr)
 
-	server := &http.Server{Handler: s.Handler}
+	server := &http.Server{Handler: healthcheck(s.Handler)}
 	err = server.Serve(listener)
 	if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
 		log.Printf("ERROR: http.Serve() - %s", err)
@@ -85,7 +102,7 @@ func (s *Server) ServeHTTPS() {
 	log.Printf("HTTPS: listening on %s", ln.Addr())
 
 	tlsListener := tls.NewListener(tcpKeepAliveListener{ln.(*net.TCPListener)}, config)
-	srv := &http.Server{Handler: s.Handler}
+	srv := &http.Server{Handler: healthcheck(s.Handler)}
 	err = srv.Serve(tlsListener)
 
 	if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
