@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 // LoginGovProvider represents an OIDC based Identity Provider
@@ -197,7 +198,7 @@ func (p *LoginGovProvider) Redeem(redirectURL, code string) (s *SessionState, er
 	return
 }
 
-// override GetLoginURL to add login.gov parameters
+// GetLoginURL overrides GetLoginURL to add login.gov parameters
 func (p *LoginGovProvider) GetLoginURL(redirectURI, state string) string {
 	var a url.URL
 	a = *p.LoginURL
