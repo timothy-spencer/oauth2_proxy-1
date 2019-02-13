@@ -18,6 +18,6 @@ RUN ./configure && make build && touch jwt_signing_key.pem
 FROM alpine:3.8
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /go/src/github.com/timothy-spencer/oauth2_proxy-1/oauth2_proxy /bin/oauth2_proxy
-COPY --from=builder /go/src/github.com/timothy-spencer/oauth2_proxy-1/jwt_signing_key.pem /etc/ssl/certs/jwt_signing_key.pem
+COPY --from=builder /go/src/github.com/timothy-spencer/oauth2_proxy-1/jwt_signing_key.pem /etc/ssl/private/jwt_signing_key.pem
 
 ENTRYPOINT ["/bin/oauth2_proxy"]
