@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -86,6 +87,7 @@ type Options struct {
 	SignatureKey string `flag:"signature-key" cfg:"signature_key" env:"OAUTH2_PROXY_SIGNATURE_KEY"`
 	AcrValues    string `flag:"acr-values" cfg:"acr_values" env:"OAUTH2_PROXY_ACR_VALUES"`
 	JWTKey       string `flag:"jwt-key" cfg:"jwt_key" env:"OAUTH2_PROXY_JWT_KEY"`
+	JWTKeyFile   string `flag:"jwt-key-file" cfg:"jwt_key_file" env:"OAUTH2_PROXY_JWT_KEY_FILE"`
 
 	// internal values that are set after config validation
 	redirectURL   *url.URL
@@ -294,14 +296,25 @@ func parseProviderInfo(o *Options, msgs []string) []string {
 		}
 	case *providers.LoginGovProvider:
 		p.AcrValues = o.AcrValues
-		if o.JWTKey == "" {
+		if o.JWTKey == "" && o.JWTKeyFile == "" {
 			msgs = append(msgs, "login.gov provider requires a private key for signing JWTs")
 		} else {
-			signKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(o.JWTKey))
-			if err != nil {
-				msgs = append(msgs, "could not parse RSA Private Key PEM")
+			if o.JWTKey != "" {
+				signKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(o.JWTKey))
+				if err != nil {
+					msgs = append(msgs, "could not parse RSA Private Key PEM")
+				} else {
+					p.JWTKey = signKey
+				}
 			} else {
-				p.JWTKey = signKey
+				keyData, err := ioutil.ReadFile(o.JWTKeyFile)
+				if err != nil {
+					msgs = append(msgs, "could not read key file: "+o.JWTKeyFile)
+				}
+				p.JWTKey, err = jwt.ParseRSAPrivateKeyFromPEM(keyData)
+				if err != nil {
+					msgs = append(msgs, "could not parse private key from PEM file:"+o.JWTKeyFile)
+				}
 			}
 		}
 	}
