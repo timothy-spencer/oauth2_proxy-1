@@ -17,6 +17,8 @@ import (
 	"github.com/mbland/hmacauth"
 	"github.com/timothy-spencer/oauth2_proxy-1/cookie"
 	"github.com/timothy-spencer/oauth2_proxy-1/providers"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
 )
 
 const (
@@ -107,6 +109,14 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if u.auth != nil {
 		r.Header.Set("GAP-Auth", w.Header().Get("GAP-Auth"))
 		u.auth.SignRequest(r)
+	}
+	// If we are in Google App Engine, use their urlfetch stuff
+	log.Printf("IsDevAppServer is %v", appengine.IsDevAppServer())
+	if appengine.IsDevAppServer() {
+		proxy := u.handler.(*httputil.ReverseProxy)
+		proxy.Transport = &urlfetch.Transport{
+			Context: appengine.NewContext(r),
+		}
 	}
 	u.handler.ServeHTTP(w, r)
 }
