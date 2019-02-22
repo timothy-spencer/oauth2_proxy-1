@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -111,8 +112,8 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.auth.SignRequest(r)
 	}
 	// If we are in Google App Engine, use their urlfetch stuff
-	log.Printf("GAE ServerSoftware is %v", appengine.ServerSoftware())
-	if appengine.ServerSoftware() == "XXX" {
+	log.Printf("GAE_INSTANCE is %v", os.Getenv("GAE_INSTANCE"))
+	if os.Getenv("GAE_INSTANCE") != "" {
 		proxy := u.handler.(*httputil.ReverseProxy)
 		proxy.Transport = &urlfetch.Transport{
 			Context: appengine.NewContext(r),
