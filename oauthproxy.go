@@ -111,8 +111,8 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.auth.SignRequest(r)
 	}
 	// If we are in Google App Engine, use their urlfetch stuff
-	log.Printf("IsDevAppServer is %v", appengine.IsDevAppServer())
-	if appengine.IsDevAppServer() {
+	log.Printf("GAE ServerSoftware is %v", appengine.ServerSoftware())
+	if appengine.ServerSoftware() == "XXX" {
 		proxy := u.handler.(*httputil.ReverseProxy)
 		proxy.Transport = &urlfetch.Transport{
 			Context: appengine.NewContext(r),
