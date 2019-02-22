@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -110,12 +109,13 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.auth.SignRequest(r)
 	}
 	// XXX debug stuff
+	log.Printf("upstream is %s", u.upstream)
 	log.Printf("proxy request is %#v", r)
-	resp, err := http.Get("https://dev-dot-rails-dot-i-cto-08132018-gcp-pilot.appspot.com/")
-	var body []byte
-	body, err = ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	log.Printf("tried direct query, body is %s, err is %#v", body, err)
+	// resp, err := http.Get("https://dev-dot-rails-dot-i-cto-08132018-gcp-pilot.appspot.com/")
+	// var body []byte
+	// body, err = ioutil.ReadAll(resp.Body)
+	// resp.Body.Close()
+	// log.Printf("tried direct query, body is %s, err is %#v", body, err)
 	// XXX end debug stuff
 	u.handler.ServeHTTP(w, r)
 }
