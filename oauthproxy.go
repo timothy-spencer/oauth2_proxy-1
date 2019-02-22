@@ -111,7 +111,7 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// XXX debug stuff
 	log.Printf("proxy request is %#v", r)
-	resp, err := http.Get("https://dev-dot-i-cto-08132018-gcp-pilot.appspot.com")
+	resp, err := http.Get("https://dev-dot-rails-dot-i-cto-08132018-gcp-pilot.appspot.com/")
 	var body []byte
 	body, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
