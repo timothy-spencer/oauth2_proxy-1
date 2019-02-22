@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -18,8 +17,6 @@ import (
 	"github.com/mbland/hmacauth"
 	"github.com/timothy-spencer/oauth2_proxy-1/cookie"
 	"github.com/timothy-spencer/oauth2_proxy-1/providers"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 )
 
 const (
@@ -111,14 +108,11 @@ func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Header.Set("GAP-Auth", w.Header().Get("GAP-Auth"))
 		u.auth.SignRequest(r)
 	}
-	// If we are in Google App Engine, use their urlfetch stuff
-	if os.Getenv("GAE_INSTANCE") != "" {
-		log.Printf("request is %#v", r)
-		proxy := u.handler.(*httputil.ReverseProxy)
-		proxy.Transport = &urlfetch.Transport{
-			Context: appengine.NewContext(r),
-		}
-	}
+	// XXX debug stuff
+	log.Printf("proxy request is %#v", r)
+	resp, err := http.Get("https://dev-dot-i-cto-08132018-gcp-pilot.appspot.com/")
+	log.Printf("tried direct query, resp is %#v, err is %#v", resp, err)
+	// XXX end debug stuff
 	u.handler.ServeHTTP(w, r)
 }
 
