@@ -37,7 +37,7 @@ func healthcheck(h http.Handler) http.Handler {
 			w.Write([]byte("OK"))
 			return
 		}
-		h.ServeHTTP(w, r)
+		// h.ServeHTTP(w, r)
 	})
 }
 
