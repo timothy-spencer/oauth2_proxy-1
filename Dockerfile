@@ -20,4 +20,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 COPY --from=builder /go/src/github.com/timothy-spencer/oauth2_proxy-1/oauth2_proxy /bin/oauth2_proxy
 COPY --from=builder /go/src/github.com/timothy-spencer/oauth2_proxy-1/jwt_signing_key.pem /etc/ssl/private/jwt_signing_key.pem
 
+RUN addgroup -S -g 2000 oauth2proxy && adduser -S -u 2000 oauth2proxy -G oauth2proxy
+USER oauth2proxy
+
 ENTRYPOINT ["/bin/oauth2_proxy"]

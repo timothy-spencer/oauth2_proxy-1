@@ -13,15 +13,19 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"gopkg.in/square/go-jose.v2"
 )
 
 // LoginGovProvider represents an OIDC based Identity Provider
 type LoginGovProvider struct {
 	*ProviderData
 
+	// XXX Ideally, the nonce would be in the session state, but the session state
+	// is created only upon code redemption, not during the auth, when this must be supplied.
 	Nonce     string
 	AcrValues string
 	JWTKey    *rsa.PrivateKey
+	PubJWKURL *url.URL
 }
 
 // For generating a nonce
@@ -68,6 +72,57 @@ func NewLoginGovProvider(p *ProviderData) *LoginGovProvider {
 		ProviderData: p,
 		Nonce:        randSeq(32),
 	}
+}
+
+type loginGovCustomClaims struct {
+	Acr           string `json:"acr"`
+	Nonce         string `json:"nonce"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Birthdate     string `json:"birthdate"`
+	AtHash        string `json:"at_hash"`
+	CHash         string `json:"c_hash"`
+	jwt.StandardClaims
+}
+
+// checkNonce checks the nonce in the id_token
+func checkNonce(idToken string, p *LoginGovProvider) (err error) {
+	token, err := jwt.ParseWithClaims(idToken, &loginGovCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		resp, myerr := http.Get(p.PubJWKURL.String())
+		if myerr != nil {
+			return nil, myerr
+		}
+		if resp.StatusCode != 200 {
+			myerr = fmt.Errorf("got %d from %q", resp.StatusCode, p.PubJWKURL.String())
+			return nil, myerr
+		}
+		body, myerr := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if myerr != nil {
+			return nil, myerr
+		}
+
+		var pubkeys jose.JSONWebKeySet
+		myerr = json.Unmarshal(body, &pubkeys)
+		if myerr != nil {
+			return nil, myerr
+		}
+		pubkey := pubkeys.Keys[0]
+
+		return pubkey.Key, nil
+	})
+	if err != nil {
+		return
+	}
+
+	claims := token.Claims.(*loginGovCustomClaims)
+	if claims.Nonce != p.Nonce {
+		err = fmt.Errorf("nonce validation failed")
+		return
+	}
+	return
 }
 
 func emailFromUserInfo(accessToken string, userInfoEndpoint string) (email string, err error) {
@@ -179,7 +234,11 @@ func (p *LoginGovProvider) Redeem(redirectURL, code string) (s *SessionState, er
 		return
 	}
 
-	// XXX should we check signature on JWT and nonce here?
+	// check nonce here
+	err = checkNonce(jsonResponse.IDToken, p)
+	if err != nil {
+		return
+	}
 
 	// Get the email address
 	var email string

@@ -186,7 +186,6 @@ First, register your application in the dashboard.  The important bits are:
   * Issuer:  do what they say for OpenID Connect.  We will refer to this string as `${LOGINGOV_ISSUER}`.
   * Public key:  This is a self-signed certificate in .pem format generated from a 2048 bit RSA private key.
     A quick way to do this is `openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 3650 -nodes -subj '/C=US/ST=Washington/L=DC/O=GSA/OU=18F/CN=localhost'`,
-    or you can use `providers/sample_key` and `providers/sample_key.pub` for TESTING ONLY.
     The contents of the `key.pem` shall be referred to as `${OAUTH2_PROXY_JWT_KEY}`.
   * Return to App URL:  Make this be `http://localhost:4180/`
   * Redirect URIs:  Make this be `http://localhost:4180/oauth2/callback`.
@@ -204,6 +203,7 @@ Now start the proxy up with the following options:
   -cookie-secret=somerandomstring12341234567890AB \
   -cookie-domain=localhost \
   -skip-provider-button=true \
+  -pubjwk-url=https://idp.int.identitysandbox.gov/api/openid_connect/certs \
   -profile-url=https://idp.int.identitysandbox.gov/api/openid_connect/userinfo \
   -jwt-key="${OAUTH2_PROXY_JWT_KEY}"
 ```
@@ -214,6 +214,26 @@ get authenticated by the login.gov integration server, and then get proxied on t
 application running on `http://localhost:3000/`.  In a real deployment, you would secure
 your application with a firewall or something so that it was only accessible from the
 proxy, and you would use real hostnames everywhere.
+
+#### Skip OIDC discovery
+
+Some providers do not support OIDC discovery via their issuer URL, so oauth2_proxy cannot simply grab the authorization, token and jwks URI endpoints from the provider's metadata.
+
+In this case, you can set the `-skip-oidc-discovery` option, and supply those required endpoints manually:
+
+```
+    -provider oidc
+    -client-id oauth2_proxy
+    -client-secret proxy
+    -redirect-url http://127.0.0.1:4180/oauth2/callback
+    -oidc-issuer-url http://127.0.0.1:5556
+    -skip-oidc-discovery
+    -login-url http://127.0.0.1:5556/authorize
+    -redeem-url http://127.0.0.1:5556/token
+    -oidc-jwks-url http://127.0.0.1:5556/keys
+    -cookie-secure=false
+    -email-domain example.com
+```
 
 ## Email Authentication
 
@@ -261,6 +281,8 @@ Usage of oauth2_proxy:
   -http-address string: [http://]<addr>:<port> or unix://<path> to listen on for HTTP clients (default "127.0.0.1:4180")
   -https-address string: <addr>:<port> to listen on for HTTPS clients (default ":443")
   -login-url string: Authentication endpoint
+  -oidc-issuer-url: the OpenID Connect issuer URL. ie: "https://accounts.google.com"
+  -oidc-jwks-url string: OIDC JWKS URI for token verification; required if OIDC discovery is disabled
   -pass-access-token: pass OAuth access_token to upstream via X-Forwarded-Access-Token header
   -pass-authorization-header: pass OIDC IDToken to upstream via Authorization Bearer header
   -pass-basic-auth: pass HTTP Basic Auth, X-Forwarded-User and X-Forwarded-Email information to upstream (default true)
@@ -280,6 +302,7 @@ Usage of oauth2_proxy:
   -signature-key string: GAP-Signature request signature key (algorithm:secretkey)
   -skip-auth-preflight: will skip authentication for OPTIONS requests
   -skip-auth-regex value: bypass authentication for requests path's that match (may be given multiple times)
+  -skip-oidc-discovery: bypass OIDC endpoint discovery. login-url, redeem-url and oidc-jwks-url must be configured in this case
   -skip-provider-button: will skip sign-in-page to directly reach the next step: oauth/start
   -ssl-insecure-skip-verify: skip validation of certificates presented when using HTTPS
   -tls-cert string: path to certificate file
@@ -387,7 +410,7 @@ The command line to run `oauth2_proxy` in this configuration would look like thi
 OAuth2 Proxy responds directly to the following endpoints. All other endpoints will be proxied upstream when authenticated. The `/oauth2` prefix can be changed with the `--proxy-prefix` config variable.
 
 - /robots.txt - returns a 200 OK response that disallows all User-agents from all paths; see [robotstxt.org](http://www.robotstxt.org/) for more info
-- /ping - returns an 200 OK response
+- /ping - returns a 200 OK response, which is intended for use with health checks  
 - /oauth2/sign_in - the login page, which also doubles as a sign out page (it clears cookies)
 - /oauth2/start - a URL that will redirect to start the OAuth cycle
 - /oauth2/callback - the URL used at the end of the OAuth cycle. The oauth app will be configured with this as the callback url.
@@ -472,6 +495,10 @@ server {
     auth_request_set $email  $upstream_http_x_auth_request_email;
     proxy_set_header X-User  $user;
     proxy_set_header X-Email $email;
+
+    # if you enabled --pass-access-token, this will pass the token to the backend
+    auth_request_set $token  $upstream_http_x_auth_request_access_token;
+    proxy_set_header X-Access-Token $token;
 
     # if you enabled --cookie-refresh, this is needed for it to work with auth_request
     auth_request_set $auth_cookie $upstream_http_set_cookie;

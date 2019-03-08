@@ -38,7 +38,7 @@ type Options struct {
 	WhitelistDomains         []string `flag:"whitelist-domain" cfg:"whitelist_domains" env:"OAUTH2_PROXY_WHITELIST_DOMAINS"`
 	GitHubOrg                string   `flag:"github-org" cfg:"github_org" env:"OAUTH2_PROXY_GITHUB_ORG"`
 	GitHubTeam               string   `flag:"github-team" cfg:"github_team" env:"OAUTH2_PROXY_GITHUB_TEAM"`
-	GoogleGroups             []string `flag:"google-group" cfg:"google_group" env:"OAUTH2_PROXY_GOOGLE_GROUP"`
+	GoogleGroups             []string `flag:"google-group" cfg:"google_group" env:"OAUTH2_PROXY_GOOGLE_GROUPS"`
 	GoogleAdminEmail         string   `flag:"google-admin-email" cfg:"google_admin_email" env:"OAUTH2_PROXY_GOOGLE_ADMIN_EMAIL"`
 	GoogleServiceAccountJSON string   `flag:"google-service-account-json" cfg:"google_service_account_json" env:"OAUTH2_PROXY_GOOGLE_SERVICE_ACCOUNT_JSON"`
 	HtpasswdFile             string   `flag:"htpasswd-file" cfg:"htpasswd_file" env:"OAUTH2_PROXY_HTPASSWD_FILE"`
@@ -54,7 +54,7 @@ type Options struct {
 	CookieSecure   bool          `flag:"cookie-secure" cfg:"cookie_secure" env:"OAUTH2_PROXY_COOKIE_SECURE"`
 	CookieHTTPOnly bool          `flag:"cookie-httponly" cfg:"cookie_httponly" env:"OAUTH2_PROXY_COOKIE_HTTPONLY"`
 
-	Upstreams             []string      `flag:"upstream" cfg:"upstreams" env:"OAUTH2_PROXY_UPSTREAM"`
+	Upstreams             []string      `flag:"upstream" cfg:"upstreams" env:"OAUTH2_PROXY_UPSTREAMS"`
 	SkipAuthRegex         []string      `flag:"skip-auth-regex" cfg:"skip_auth_regex" env:"OAUTH2_PROXY_SKIP_AUTH_REGEX"`
 	PassBasicAuth         bool          `flag:"pass-basic-auth" cfg:"pass_basic_auth" env:"OAUTH2_PROXY_PASS_BASIC_AUTH"`
 	BasicAuthPassword     string        `flag:"basic-auth-password" cfg:"basic_auth_password" env:"OAUTH2_PROXY_BASIC_AUTH_PASSWORD"`
@@ -73,6 +73,8 @@ type Options struct {
 	// potential overrides.
 	Provider          string `flag:"provider" cfg:"provider" env:"OAUTH2_PROXY_PROVIDER"`
 	OIDCIssuerURL     string `flag:"oidc-issuer-url" cfg:"oidc_issuer_url" env:"OAUTH2_PROXY_OIDC_ISSUER_URL"`
+	SkipOIDCDiscovery bool   `flag:"skip-oidc-discovery" cfg:"skip_oidc_discovery" env:"OAUTH2_SKIP_OIDC_DISCOVERY"`
+	OIDCJwksURL       string `flag:"oidc-jwks-url" cfg:"oidc_jwks_url" env:"OAUTH2_OIDC_JWKS_URL"`
 	LoginURL          string `flag:"login-url" cfg:"login_url" env:"OAUTH2_PROXY_LOGIN_URL"`
 	RedeemURL         string `flag:"redeem-url" cfg:"redeem_url" env:"OAUTH2_PROXY_REDEEM_URL"`
 	ProfileURL        string `flag:"profile-url" cfg:"profile_url" env:"OAUTH2_PROXY_PROFILE_URL"`
@@ -88,6 +90,7 @@ type Options struct {
 	AcrValues    string `flag:"acr-values" cfg:"acr_values" env:"OAUTH2_PROXY_ACR_VALUES"`
 	JWTKey       string `flag:"jwt-key" cfg:"jwt_key" env:"OAUTH2_PROXY_JWT_KEY"`
 	JWTKeyFile   string `flag:"jwt-key-file" cfg:"jwt_key_file" env:"OAUTH2_PROXY_JWT_KEY_FILE"`
+	PubJWKURL    string `flag:"pubjwk-url" cfg:"pubjwk_url" env:"OAUTH2_PROXY_PUBJWK_URL"`
 
 	// internal values that are set after config validation
 	redirectURL   *url.URL
@@ -126,6 +129,7 @@ func NewOptions() *Options {
 		PassAuthorization:    false,
 		ApprovalPrompt:       "force",
 		RequestLogging:       true,
+		SkipOIDCDiscovery:    false,
 		RequestLoggingFormat: defaultRequestLoggingFormat,
 	}
 }
@@ -157,6 +161,7 @@ func (o *Options) Validate() error {
 	if o.ClientID == "" {
 		msgs = append(msgs, "missing setting: client-id")
 	}
+	// login.gov uses a signed JWT to authenticate, not a client-secret
 	if o.ClientSecret == "" && o.Provider != "login.gov" {
 		msgs = append(msgs, "missing setting: client-secret")
 	}
@@ -166,16 +171,40 @@ func (o *Options) Validate() error {
 	}
 
 	if o.OIDCIssuerURL != "" {
-		// Configure discoverable provider data.
-		provider, err := oidc.NewProvider(context.Background(), o.OIDCIssuerURL)
-		if err != nil {
-			return err
+
+		ctx := context.Background()
+
+		// Construct a manual IDTokenVerifier from issuer URL & JWKS URI
+		// instead of metadata discovery if we enable -skip-oidc-discovery.
+		// In this case we need to make sure the required endpoints for
+		// the provider are configured.
+		if o.SkipOIDCDiscovery {
+			if o.LoginURL == "" {
+				msgs = append(msgs, "missing setting: login-url")
+			}
+			if o.RedeemURL == "" {
+				msgs = append(msgs, "missing setting: redeem-url")
+			}
+			if o.OIDCJwksURL == "" {
+				msgs = append(msgs, "missing setting: oidc-jwks-url")
+			}
+			keySet := oidc.NewRemoteKeySet(ctx, o.OIDCJwksURL)
+			o.oidcVerifier = oidc.NewVerifier(o.OIDCIssuerURL, keySet, &oidc.Config{
+				ClientID: o.ClientID,
+			})
+		} else {
+			// Configure discoverable provider data.
+			provider, err := oidc.NewProvider(ctx, o.OIDCIssuerURL)
+			if err != nil {
+				return err
+			}
+			o.oidcVerifier = provider.Verifier(&oidc.Config{
+				ClientID: o.ClientID,
+			})
+
+			o.LoginURL = provider.Endpoint().AuthURL
+			o.RedeemURL = provider.Endpoint().TokenURL
 		}
-		o.oidcVerifier = provider.Verifier(&oidc.Config{
-			ClientID: o.ClientID,
-		})
-		o.LoginURL = provider.Endpoint().AuthURL
-		o.RedeemURL = provider.Endpoint().TokenURL
 		if o.Scope == "" {
 			o.Scope = "openid email profile"
 		}
@@ -296,6 +325,7 @@ func parseProviderInfo(o *Options, msgs []string) []string {
 		}
 	case *providers.LoginGovProvider:
 		p.AcrValues = o.AcrValues
+		p.PubJWKURL, msgs = parseURL(o.PubJWKURL, "pubjwk", msgs)
 		if o.JWTKey == "" && o.JWTKeyFile == "" {
 			msgs = append(msgs, "login.gov provider requires a private key for signing JWTs")
 		} else {
