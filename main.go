@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -93,6 +94,7 @@ func main() {
 	flagSet.String("jwt-key", "", "private key used to sign JWT: required by login.gov")
 	flagSet.String("jwt-key-file", "", "private key file used to sign JWT: required by login.gov")
 	flagSet.String("pubjwk-url", "", "JWK pubkey access endpoint: required by login.gov")
+	flagSet.Bool("gcp-healthchecks", false, "Enable GCP healthcheck endpoints")
 
 	flagSet.Parse(os.Args[1:])
 
@@ -140,8 +142,14 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
+	var myhandler http.Handler
+	if opts.GCPHealthChecks {
+		myhandler = gcpHealthcheck(LoggingHandler(os.Stdout, oauthproxy, opts.RequestLogging, opts.RequestLoggingFormat))
+	} else {
+		myhandler = LoggingHandler(os.Stdout, oauthproxy, opts.RequestLogging, opts.RequestLoggingFormat)
+	}
 	s := &Server{
-		Handler: LoggingHandler(os.Stdout, oauthproxy, opts.RequestLogging, opts.RequestLoggingFormat),
+		Handler: myhandler,
 		Opts:    opts,
 	}
 	s.ListenAndServe()
