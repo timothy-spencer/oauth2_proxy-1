@@ -81,6 +81,7 @@ type OAuthProxy struct {
 	serveMux            http.Handler
 	SetXAuthRequest     bool
 	PassBasicAuth       bool
+	SetXForwardedHost   bool
 	SkipProviderButton  bool
 	PassUserHeaders     bool
 	BasicAuthPassword   string
@@ -97,16 +98,20 @@ type OAuthProxy struct {
 
 // UpstreamProxy represents an upstream server to proxy to
 type UpstreamProxy struct {
-	upstream  string
-	handler   http.Handler
-	wsHandler http.Handler
-	auth      hmacauth.HmacAuth
+	upstream       string
+	handler        http.Handler
+	wsHandler      http.Handler
+	auth           hmacauth.HmacAuth
+	xforwardedhost bool
 }
 
 // ServeHTTP proxies requests to the upstream provider while signing the
 // request headers
 func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("GAP-Upstream-Address", u.upstream)
+	if u.xforwardedhost {
+		w.Header().Set("X-Forwarded-Host", r.Host)
+	}
 	if u.auth != nil {
 		r.Header.Set("GAP-Auth", w.Header().Get("GAP-Auth"))
 		u.auth.SignRequest(r)
@@ -170,7 +175,8 @@ func NewWebSocketOrRestReverseProxy(u *url.URL, opts *Options, auth hmacauth.Hma
 		wsURL := &url.URL{Scheme: wsScheme, Host: u.Host}
 		wsProxy = wsutil.NewSingleHostReverseProxy(wsURL)
 	}
-	return &UpstreamProxy{u.Host, proxy, wsProxy, auth}
+
+	return &UpstreamProxy{u.Host, proxy, wsProxy, auth, opts.SetXForwardedHost}
 }
 
 // NewOAuthProxy creates a new instance of OOuthProxy from the options provided
@@ -195,7 +201,7 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 			}
 			logger.Printf("mapping path %q => file system %q", path, u.Path)
 			proxy := NewFileServer(path, u.Path)
-			serveMux.Handle(path, &UpstreamProxy{path, proxy, nil, nil})
+			serveMux.Handle(path, &UpstreamProxy{path, proxy, nil, nil, opts.SetXForwardedHost})
 		default:
 			panic(fmt.Sprintf("unknown upstream protocol %s", u.Scheme))
 		}
@@ -255,6 +261,7 @@ func NewOAuthProxy(opts *Options, validator func(string) bool) *OAuthProxy {
 		skipAuthPreflight:  opts.SkipAuthPreflight,
 		compiledRegex:      opts.CompiledRegex,
 		SetXAuthRequest:    opts.SetXAuthRequest,
+		SetXForwardedHost:  opts.SetXForwardedHost,
 		PassBasicAuth:      opts.PassBasicAuth,
 		PassUserHeaders:    opts.PassUserHeaders,
 		BasicAuthPassword:  opts.BasicAuthPassword,

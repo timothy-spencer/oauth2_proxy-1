@@ -314,6 +314,7 @@ Usage of oauth2_proxy:
   -pass-access-token: pass OAuth access_token to upstream via X-Forwarded-Access-Token header
   -pass-authorization-header: pass OIDC IDToken to upstream via Authorization Bearer header
   -pass-basic-auth: pass HTTP Basic Auth, X-Forwarded-User and X-Forwarded-Email information to upstream (default true)
+  -set-x-forwarded-host: set the X-Forwarded-Host header to the Host for upstream requests (default false)
   -pass-host-header: pass the request Host Header to upstream (default true)
   -pass-user-headers: pass X-Forwarded-User and X-Forwarded-Email information to upstream (default true)
   -profile-url string: Profile access endpoint

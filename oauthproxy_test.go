@@ -1108,3 +1108,65 @@ func TestClearSingleCookie(t *testing.T) {
 
 	assert.Equal(t, 1, len(header["Set-Cookie"]), "should have 1 set-cookie header entries")
 }
+
+func TestXForwardedHostOption(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("response"))
+	}))
+	defer upstream.Close()
+
+	opts := NewOptions()
+	opts.Upstreams = append(opts.Upstreams, upstream.URL)
+	opts.ClientID = "bazquux"
+	opts.ClientSecret = "foobar"
+	opts.CookieSecret = "xyzzyplugh"
+	opts.SkipAuthPreflight = true
+	opts.SetXForwardedHost = true
+	opts.Validate()
+
+	upstreamURL, _ := url.Parse(upstream.URL)
+	opts.provider = NewTestProvider(upstreamURL, "")
+
+	proxy := NewOAuthProxy(opts, func(string) bool { return false })
+	rw := httptest.NewRecorder()
+	req, _ := http.NewRequest("OPTIONS", "/", nil)
+	req.Host = "hostname"
+	proxy.ServeHTTP(rw, req)
+	header := rw.Header()
+	t.Logf("headers are %#v", header)
+
+	assert.Equal(t, 200, rw.Code)
+	assert.Contains(t, header["X-Forwarded-Host"], "hostname")
+}
+
+func TestNotXForwardedHostOption(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("response"))
+	}))
+	defer upstream.Close()
+
+	opts := NewOptions()
+	opts.Upstreams = append(opts.Upstreams, upstream.URL)
+	opts.ClientID = "bazquux"
+	opts.ClientSecret = "foobar"
+	opts.CookieSecret = "xyzzyplugh"
+	opts.SkipAuthPreflight = true
+	opts.SetXForwardedHost = false
+	opts.Validate()
+
+	upstreamURL, _ := url.Parse(upstream.URL)
+	opts.provider = NewTestProvider(upstreamURL, "")
+
+	proxy := NewOAuthProxy(opts, func(string) bool { return false })
+	rw := httptest.NewRecorder()
+	req, _ := http.NewRequest("OPTIONS", "/", nil)
+	req.Host = "hostname"
+	proxy.ServeHTTP(rw, req)
+	header := rw.Header()
+	t.Logf("headers are %#v", header)
+
+	assert.Equal(t, 200, rw.Code)
+	assert.Nil(t, header["X-Forwarded-Host"])
+}
